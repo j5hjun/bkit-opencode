@@ -1,4 +1,15 @@
 import type { PluginInput } from "@opencode-ai/plugin"
+
+/**
+ * Generate a Part ID that starts with "prt" (required by OpenCode's internal validation).
+ * Uses a combination of "prt" prefix + timestamp + random suffix for uniqueness.
+ */
+function generatePartId(): string {
+  const timestamp = Date.now().toString(36)
+  const random = Math.random().toString(36).substring(2, 8)
+  return `prt${timestamp}${random}`
+}
+
 import { matchImplicitAgentTrigger, matchImplicitSkillTrigger, detectNewFeatureIntent } from "../lib/intent/trigger"
 import { calculateAmbiguityScore, generateClarifyingQuestions } from "../lib/intent/ambiguity"
 import { classifyTask, getPdcaLevel, getPdcaGuidance } from "../lib/task/classification"
@@ -20,7 +31,7 @@ import { getSkillConfig } from "../lib/skill-orchestrator"
  * because OpenCode validates parts with PartBase schema (message-v2.ts) before
  * saving to DB via Session.updatePart(). Missing these fields causes Zod errors.
  *
- * - id: unique part identifier (use crypto.randomUUID() or similar)
+ * - id: unique part identifier (MUST start with "prt" - use generatePartId())
  * - sessionID: from output.message.sessionID
  * - messageID: from output.message.id
  */
@@ -45,7 +56,7 @@ export function createMessageHandler(input: PluginInput) {
       // synthetic: true → only sent to AI (audience: ["assistant"]), hidden from user's message bubble.
       // Without synthetic, bkit guidance text appears as part of the user's original message in TUI.
       const makeTextPart = (text: string) => ({
-        id: crypto.randomUUID(),
+        id: generatePartId(),
         sessionID: output.message.sessionID ?? msgInput.sessionID,
         messageID: output.message.id ?? msgInput.messageID ?? "",
         type: "text" as const,
